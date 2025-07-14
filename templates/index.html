@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>🧴 Skincare Product Recommender</title>
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #f7f1f5;
+      --accent: #ffdee9;
+      --text: #333;
+      --card-bg: #fff;
+      --border: #e0e0e0;
+      --font: 'Open Sans', sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: var(--font);
+      background: var(--primary);
+      color: var(--text);
+    }
+    header {
+      background: var(--accent);
+      padding: 2rem;
+      text-align: center;
+      font-size: 1.8rem;
+      font-weight: 600;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    main {
+      max-width: 900px;
+      margin: 2rem auto;
+      padding: 1rem;
+    }
+    form {
+      background: var(--card-bg);
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+      display: flex;
+      flex-direction: column;
+      gap: 1.2rem;
+    }
+    label { font-weight: 600; }
+    select, input[type="text"], button {
+      padding: 0.8rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      font-size: 1rem;
+      width: 100%;
+    }
+    button {
+      background: #ffdee9;
+      border: none;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+    button:hover { background: #facfe2; }
+    .results {
+      margin-top: 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+    .card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 1.5rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+    .ai-json-list, .product-list {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    .ai-json-item {
+      background: #fefefe;
+      padding: 1rem;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .ingredient-group { margin-top: 1rem; }
+    .product-item {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .product-name { font-weight: 600; }
+    .product-detail {
+      font-size: 0.9rem;
+      color: #555;
+    }
+    .product-item img {
+      max-width: 100%;
+      height: 100px;
+      object-fit: contain;
+      border-radius: 6px;
+    }
+    @media (max-width: 600px) {
+      header { font-size: 1.5rem; padding: 1.5rem; }
+      .card { padding: 1rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header>🧴 Skincare Product Recommender</header>
+
+<main>
+  <form id="recommenderForm">
+    <label for="skinType">Skin Type</label>
+    <select id="skinType" name="skin_type" required>
+      <option value="">Select...</option>
+      <option value="oily">Oily</option>
+      <option value="dry">Dry</option>
+      <option value="normal">Normal</option>
+      <option value="sensitive">Sensitive</option>
+      <option value="combination">Combination</option>
+    </select>
+
+    <label for="concerns">Skin Concerns (comma-separated)</label>
+    <input type="text" id="concerns" name="concerns" placeholder="e.g. acne, wrinkles, dryness" required>
+
+    <label for="ingredients">Target Ingredients (comma-separated)</label>
+    <input type="text" id="ingredients" name="ingredients" placeholder="e.g. niacinamide, retinol">
+
+    <button type="submit">🔍 Recommend Products</button>
+  </form>
+
+  <section class="results" id="results" style="display: none;">
+    <div class="card">
+      <h2>🔮 Recommended by Gemini AI</h2>
+      <div id="aiJson" class="ai-json-list"></div>
+    </div>
+
+    <div class="card" id="ingredientResults">
+      <!-- Ingredient-based product list -->
+    </div>
+  </section>
+</main>
+
+<script>
+  document.getElementById('recommenderForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+
+    const skinType = document.getElementById('skinType').value;
+    const concerns = document.getElementById('concerns').value.split(',').map(c => c.trim()).filter(Boolean);
+    const ingredients = document.getElementById('ingredients').value.split(',').map(i => i.trim()).filter(Boolean);
+
+    const data = {
+      skin_type: skinType,
+      concerns: concerns,
+      ingredients: ingredients
+    };
+
+    fetch('/recommend', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(res => {
+  const aiJsonContainer = document.getElementById('aiJson');
+  aiJsonContainer.innerHTML = '';
+
+  if (Array.isArray(res.ai_result)) {
+    res.ai_result.forEach(p => {
+      const item = document.createElement('div');
+      item.className = 'ai-json-item';
+      item.innerHTML = `
+        <div><strong>${p.product_name}</strong> (${p.brand_name})</div>
+        <div class="product-detail">Skin Type: ${p.skin_type} | Concerns: ${Array.isArray(p.concerns) ? p.concerns.join(', ') : p.concerns}</div>
+        <div class="product-detail">Ingredients: ${p.ingredients}</div>
+        <div class="product-detail">Price: $${p.price}</div>
+        <div class="product-detail"><em>${p.justification}</em></div>
+      `;
+      aiJsonContainer.appendChild(item);
+    });
+  } else {
+    aiJsonContainer.innerHTML = `<div style="color:red">Failed to load AI recommendations.</div>`;
+  }
+
+  const ingredientResults = document.getElementById('ingredientResults');
+  ingredientResults.innerHTML = '<h2>🔬 Products by Ingredient</h2>';
+
+  for (const [ingredient, products] of Object.entries(res.ingredient_results || {})) {
+    const group = document.createElement('div');
+    group.className = 'ingredient-group';
+    group.innerHTML = `<h3>${ingredient}</h3>`;
+    const productList = document.createElement('div');
+    productList.className = 'product-list';
+
+    if (products.length === 0) {
+      productList.innerHTML = `<div class="product-detail">No matching products found.</div>`;
+    } else {
+      products.forEach(p => {
+        const item = document.createElement('div');
+        item.className = 'product-item';
+        item.innerHTML = `
+          <img src="https://via.placeholder.com/100x100?text=${encodeURIComponent(p.brand_name || 'Product')}" alt="${p.product_name}" />
+          <div class="product-name">${p.product_name}</div>
+          <div class="product-detail">Brand: ${p.brand_name}</div>
+          <div class="product-detail">Skin Type: ${p.skin_type}</div>
+          <div class="product-detail">Concerns: ${Array.isArray(p.concerns) ? p.concerns.join(', ') : p.concerns}</div>
+          <div class="product-detail">Ingredients: ${p.ingredients}</div>
+          <div class="product-detail">Price: $${p.price_usd}</div>
+        `;
+        productList.appendChild(item);
+      });
+    }
+
+    group.appendChild(productList);
+    ingredientResults.appendChild(group);
+  }
+
+  document.getElementById('results').style.display = 'block';
+})
+.catch(err => {
+  document.getElementById('aiJson').innerHTML = `<div style="color:red">Error loading recommendations.</div>`;
+  document.getElementById('ingredientResults').innerHTML = '';
+});
+
+  });
+</script>
+
+</body>
+</html>
